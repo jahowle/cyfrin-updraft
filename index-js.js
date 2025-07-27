@@ -14,6 +14,7 @@ const fundButton = document.getElementById("fundButton");
 const balanceButton = document.getElementById("balanceButton");
 const withdrawButton = document.getElementById("withdrawButton");
 const ethAmountInput = document.getElementById("ethAmount");
+const checkFundingButton = document.getElementById("checkFunding");
 
 let walletClient;
 let publicClient;
@@ -133,8 +134,46 @@ async function getCurrentChain(client) {
   return currentChain;
 }
 
+//Needs to be an async function because it can take a while to get the balance
+async function checkFunding() {
+  //First checks if Metamask or other wallet is installed by looking at the window object for the ethereum object
+  if (typeof window.ethereum !== "undefined") {
+    try {
+      // If wallet is present, create walletClient first because it is going to read or interact with the wallet
+      walletClient = createWalletClient({
+        transport: custom(window.ethereum),
+      });
+
+      // Create publicClient to read the contract
+      publicClient = createPublicClient({
+        transport: custom(window.ethereum),
+      });
+
+      // Get the account address from the wallet
+      const [account] = await walletClient.requestAddresses();
+
+      // Use readContract to call the smart contract function
+      const addressBalance = await publicClient.readContract({
+        address: contractAddress,
+        abi: abi,
+        functionName: "getAddressToAmountFunded",
+        args: [account], // Pass the account address as an argument
+      });
+
+      // Format the balance to be in ETH
+      console.log(formatEther(addressBalance));
+    } catch (error) {
+      console.log(error);
+    }
+  } else {
+    // If wallet is not present, show a message to the user
+    balanceButton.innerHTML = "Please install MetaMask";
+  }
+}
+
 // Event listeners
 connectButton.onclick = connect;
 fundButton.onclick = fund;
 balanceButton.onclick = getBalance;
 withdrawButton.onclick = withdraw;
+checkFundingButton.onclick = checkFunding;
